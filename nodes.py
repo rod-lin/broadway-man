@@ -1,19 +1,21 @@
-from fabric import Connection
-
 import os
 import uuid
 import getpass
 
-BASE_DIR = "/broadway"
+from const import *
 
 class Node:
     """base class for a node"""
 
     def __init__(self, conn):
         self.conn = conn
-        self.password = getpass.getpass("Password for connection to {}@{}: ".format(conn.user, conn.host))
 
-    def setup(self):
+        password = conn.connect_kwargs.get("password")
+
+        self.password = \
+            password if password is not None else \
+            getpass.getpass("sudo password for {}@{}: ".format(conn.user, conn.host))
+
         self.conn.sudo("mkdir -p {}/scripts".format(BASE_DIR), password=self.password)
         self.conn.sudo("chown -R {} {}".format(self.conn.user, BASE_DIR), password=self.password)
 
@@ -21,6 +23,11 @@ class Node:
         for file in os.listdir("scripts"):
             if file.endswith(".sh"):
                 self.conn.put("scripts/{}".format(file), "{}/scripts".format(BASE_DIR))
+
+    def setup(self): pass
+
+    def info(self):
+        self.conn.run("uname -a")
 
     # run in BASE_DIR
     def run(self, cmd):
@@ -42,24 +49,12 @@ class Master(Node):
         self.sudo("bash scripts/stop-master.sh")
 
 class Worker(Node):
-    def __init__(self, conn, host, port, token):
+    def __init__(self, conn):
         super().__init__(conn)
-        self.host = host
-        self.port = port
-        self.token = token
 
-    def setup(self):
+    def setup(self, host, port, token):
         super().setup()
-        self.sudo("bash scripts/worker.sh {} {} {}".format(self.host, self.port, self.token))
+        self.sudo("bash scripts/worker.sh {} {} {}".format(host, port, token))
 
     def stop(self):
         self.sudo("bash scripts/stop-worker.sh")
-
-if __name__ == "__main__":
-    conn = Connection("rodlin@ric0.could.fail")
-
-    master = Master(conn)
-    master.setup()
-
-    worker = Worker(conn, "127.0.0.1", "1470", master.token)
-    worker.setup()

@@ -16,7 +16,12 @@ install-docker() {
     if ! [ -x "$(command -v docker)" ]; then
         log "installing docker"
         wget -O - https://get.docker.com/ | sh
-    
+        log "docker installed"
+    else
+        log "docker has already been installed"
+    fi
+
+    if ! [ -f "/etc/systemd/system/docker.service.d/override.conf" ]; then
         log "restarting docker with local port binding"
 
         mkdir -p /etc/systemd/system/docker.service.d/
@@ -31,9 +36,7 @@ install-docker() {
         systemctl daemon-reload
         systemctl restart docker
 
-        log "docker installed"
-    else
-        log "docker has already been installed"
+        log "docker restarted"
     fi
 }
 
@@ -67,4 +70,8 @@ rm-name() {
     if [ "$(docker ps -aq -f status=exited -f name=$1)" ]; then
         docker rm $1
     fi
+}
+
+stop-container() {
+    [ "$(docker stop $1)" == $1 ]
 }
