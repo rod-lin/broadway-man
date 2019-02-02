@@ -1,6 +1,7 @@
 import os
 import uuid
 import getpass
+import tempfile
 
 from const import *
 
@@ -24,6 +25,25 @@ class Node:
             if file.endswith(".sh"):
                 self.conn.put("scripts/{}".format(file), "{}/scripts".format(BASE_DIR))
 
+        # generate const.sh
+        _, path = tempfile.mkstemp()
+
+        with open(path, "wb") as f:
+            f.write(Node.gen_const_sh().encode("utf-8"))
+
+        self.conn.put(path, "{}/scripts/const.sh".format(BASE_DIR))
+        os.unlink(path)
+
+    @staticmethod
+    def gen_const_sh():
+        """generate scripts/const.sh"""
+        lines = []
+        
+        for key in SCRIPT_CONST:
+            lines.append("{}=\"{}\"".format(key, SCRIPT_CONST[key]))
+
+        return "\n".join(lines)
+
     def info(self):
         self.conn.run("uname -a")
 
@@ -46,6 +66,9 @@ class Master(Node):
 
     def stop(self):
         self.sudo("bash scripts/stop-master.sh")
+
+    def get_token(self):
+        self.sudo("bash scripts/token.sh")
 
 class Worker(Node):
     def __init__(self, conn):

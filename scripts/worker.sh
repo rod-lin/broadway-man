@@ -47,11 +47,15 @@ else
 
     docker pull $REPO_BROADWAY_GRADER
 
+    log "creating work dir $GRADER_WORKDIR"
+
+    mkdir -p $GRADER_WORKDIR
+
     docker run \
     --net=host \
     --name $CONTAINER_WORKER \
-    -v /tmp:/tmp \
+    -v $GRADER_WORKDIR:$GRADER_WORKDIR \
     -e DOCKER_HOST=tcp://$DOCKER_HOST:$DOCKER_PORT \
     -d $REPO_BROADWAY_GRADER \
-    grader $MASTER_HOST $MASTER_PORT $CLUSTER_TOKEN
+    grader $MASTER_HOST $MASTER_PORT $CLUSTER_TOKEN --workdir=$GRADER_WORKDIR
 fi
