@@ -51,7 +51,7 @@ else
     --net=host \
     --name $CONTAINER_MASTER $MASTER_ARGS \
     -d $REPO_BROADWAY_API \
-    api --db-uri=mongodb://$MONGO_HOST:$MONGO_PORT
+    api --db-uri=mongodb://$MONGO_HOST:$MONGO_PORT # for test --course-config=utils/config.json
 
     docker logs $CONTAINER_MASTER
 fi

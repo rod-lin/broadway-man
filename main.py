@@ -55,14 +55,11 @@ class Worker(Node):
     def stop(self):
         self.sudo("bash scripts/stop-worker.sh")
 
-conn = Connection("rodlin@ric0.could.fail")
+if __name__ == "__main__":
+    conn = Connection("rodlin@ric0.could.fail")
 
-master = Master(conn)
-master.setup()
+    master = Master(conn)
+    master.setup()
 
-worker = Worker(conn, "127.0.0.1", "1470", master.token)
-worker.setup()
-
-# node.stop()
-
-# print(node.run("ls").stdout)
+    worker = Worker(conn, "127.0.0.1", "1470", master.token)
+    worker.setup()

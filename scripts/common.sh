@@ -1,3 +1,5 @@
+source scripts/const.sh
+
 log() {
     echo "==>" "$@" 1>&2
 }
@@ -14,6 +16,22 @@ install-docker() {
     if ! [ -x "$(command -v docker)" ]; then
         log "installing docker"
         wget -O - https://get.docker.com/ | sh
+    
+        log "restarting docker with local port binding"
+
+        mkdir -p /etc/systemd/system/docker.service.d/
+
+        # add -H tcp://$DOCKER_HOST:$DOCKER_PORT flag
+        {
+            echo "[Service]"
+            echo "ExecStart="
+            echo "ExecStart=/usr/bin/env dockerd -H fd:// -H tcp://$DOCKER_HOST:$DOCKER_PORT"
+        } > cat > /etc/systemd/system/docker.service.d/override.conf
+
+        systemctl daemon-reload
+        systemctl restart docker
+
+        log "docker installed"
     else
         log "docker has already been installed"
     fi
