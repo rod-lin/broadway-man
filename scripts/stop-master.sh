@@ -21,7 +21,7 @@ if is-container-running $CONTAINER_MONGO; then
     log "stopping $CONTAINER_MONGO"
     
     if stop-container $CONTAINER_MONGO; then
-        log "stopped $CONTAINER_MONGOR"
+        log "stopped $CONTAINER_MONGO"
     else
         error "failed to stop $CONTAINER_MONGO"
     fi

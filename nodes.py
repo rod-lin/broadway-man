@@ -16,15 +16,13 @@ class Node:
             password if password is not None else \
             getpass.getpass("sudo password for {}@{}: ".format(conn.user, conn.host))
 
-        self.conn.sudo("mkdir -p {}/scripts".format(BASE_DIR), password=self.password)
-        self.conn.sudo("chown -R {} {}".format(self.conn.user, BASE_DIR), password=self.password)
+        self.sudo("mkdir -p {}/scripts".format(BASE_DIR))
+        self.sudo("chown -R {} {}".format(self.conn.user, BASE_DIR))
 
         # upload all scripts
         for file in os.listdir("scripts"):
             if file.endswith(".sh"):
                 self.conn.put("scripts/{}".format(file), "{}/scripts".format(BASE_DIR))
-
-    def setup(self): pass
 
     def info(self):
         self.conn.run("uname -a")
@@ -34,7 +32,9 @@ class Node:
         return self.conn.run("cd {} && bash -c '{}'".format(BASE_DIR, cmd))
 
     def sudo(self, cmd):
-        return self.conn.sudo("bash -c 'cd {} && {}'".format(BASE_DIR, cmd), password=self.password)
+        # set sudo prompt to an invisible character to avoid default prompt
+        cmd = "cd {} && echo '{}' | sudo -S -p $(echo -ne '\x07') {}".format(BASE_DIR, self.password, cmd)
+        return self.conn.run(cmd, pty=True)
 
 class Master(Node):
     def __init__(self, conn, token=str(uuid.uuid4())):
@@ -42,7 +42,6 @@ class Master(Node):
         self.token = token
 
     def setup(self):
-        super().setup()
         self.sudo("bash scripts/master.sh {}".format(self.token))
 
     def stop(self):
@@ -53,7 +52,6 @@ class Worker(Node):
         super().__init__(conn)
 
     def setup(self, host, port, token):
-        super().setup()
         self.sudo("bash scripts/worker.sh {} {} {}".format(host, port, token))
 
     def stop(self):
