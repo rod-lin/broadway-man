@@ -83,20 +83,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.handler(args)
-
-    # if args.help and args.action is None:
-    #     parser.print_help()
-    #     exit(1)
-
-    # if args.action in actions:
-    #     actions[args.action](unknown)
-    # else:
-    #     print("No such action")
-    #     print_action()
-    #     exit(1)
-
-    # master = Master(conn)
-    # master.info()
-
-    # worker = Worker(conn, "127.0.0.1", "1470", master.token)
-    # worker.setup()
