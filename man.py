@@ -26,13 +26,13 @@ def cmd_install_master(args):
     for host in args.host:
         conn = make_conn(host, args)
         master = Master(conn)
-        master.setup()
+        master.deploy()
 
 def cmd_install_worker(args):
     for host in args.host:
         conn = make_conn(host, args)
         worker = Worker(conn)
-        worker.setup(args.master_host, args.master_port, args.token)
+        worker.deploy(args.master_host, args.master_port, args.token)
 
 def cmd_stop_master(args):
     for host in args.host:
@@ -49,12 +49,22 @@ def cmd_stop_worker(args):
 def cmd_mongo(args):
     conn = make_conn(args.host, args)
     master = Master(conn)
-    master.run("mongo --host {} --port {}".format(SCRIPT_CONST["MONGO_HOST"], SCRIPT_CONST["MONGO_PORT"]))
+    master.sudo("docker exec -it {} mongo --host {} --port {}" \
+                .format(SCRIPT_CONST["CONTAINER_MONGO"], SCRIPT_CONST["MONGO_HOST"], SCRIPT_CONST["MONGO_PORT"]))
 
 def cmd_token(args):
     conn = make_conn(args.host, args)
     master = Master(conn)
     master.get_token()
+
+def cmd_cluster(args):
+    with open(args.cluster_conf, "rb") as fp:
+        cluster = Cluster.from_json(fp.read())
+
+    host, port, token = cluster.deploy()
+
+    print("Cluster on {}:{} is deployed".format(host, port))
+    print("Cluster token: " + token)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Manage Broadway nodes")
@@ -106,6 +116,11 @@ if __name__ == "__main__":
     parser_token = parser_sub.add_parser("token", description="Get master node token")
     host_args(parser_token, single=True)
     parser_token.set_defaults(handler=cmd_token)
+
+    # -> cluster
+    parser_cluster = parser_sub.add_parser("cluster", description="Deploy a cluster")
+    parser_cluster.add_argument("cluster_conf", help="JSON configuration for the cluster")
+    parser_cluster.set_defaults(handler=cmd_cluster)
 
     args = parser.parse_args()
     args.handler(args)
