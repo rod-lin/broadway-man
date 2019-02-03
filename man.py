@@ -22,13 +22,13 @@ def host_args(parser, single=False):
                         help="Use public key instead of asking for password")
     parser.add_argument("--password", help="Use the given password. This will apply to all given hosts")
 
-def cmd_install_master(args):
+def cmd_deploy_master(args):
     for host in args.host:
         conn = make_conn(host, args)
         master = Master(conn)
         master.deploy()
 
-def cmd_install_worker(args):
+def cmd_deploy_worker(args):
     for host in args.host:
         conn = make_conn(host, args)
         worker = Worker(conn)
@@ -57,7 +57,7 @@ def cmd_token(args):
     master = Master(conn)
     master.get_token()
 
-def cmd_cluster(args):
+def cmd_deploy_cluster(args):
     with open(args.cluster_conf, "rb") as fp:
         cluster = Cluster.from_json(fp.read())
 
@@ -72,24 +72,29 @@ if __name__ == "__main__":
 
     parser_sub = parser.add_subparsers()
 
-    # -> install
-    parser_install = parser_sub.add_parser("install", description="Install master/worker node")
-    parser_install.set_defaults(handler=lambda _: parser_install.print_help())
+    # -> deploy
+    parser_deploy = parser_sub.add_parser("deploy", description="Deploy master/worker node")
+    parser_deploy.set_defaults(handler=lambda _: parser_deploy.print_help())
 
-    parser_install_sub = parser_install.add_subparsers()
+    parser_deploy_sub = parser_deploy.add_subparsers()
 
-    # -> install -> master
-    parser_install_master = parser_install_sub.add_parser("master", description="Install master node")
-    host_args(parser_install_master)
-    parser_install_master.set_defaults(handler=cmd_install_master)
+    # -> deploy -> master
+    parser_deploy_master = parser_deploy_sub.add_parser("master", description="Deploy master node")
+    host_args(parser_deploy_master)
+    parser_deploy_master.set_defaults(handler=cmd_deploy_master)
 
-    # -> install -> worker
-    parser_install_worker = parser_install_sub.add_parser("worker", description="Install worker node")
-    parser_install_worker.add_argument("master_host", help="Master node host")
-    parser_install_worker.add_argument("master_port", help="Master node port")
-    parser_install_worker.add_argument("token", help="Cluster token")
-    host_args(parser_install_worker)
-    parser_install_worker.set_defaults(handler=cmd_install_worker)
+    # -> deploy -> worker
+    parser_deploy_worker = parser_deploy_sub.add_parser("worker", description="Deploy worker node")
+    parser_deploy_worker.add_argument("master_host", help="Master node host")
+    parser_deploy_worker.add_argument("master_port", help="Master node port")
+    parser_deploy_worker.add_argument("token", help="Cluster token")
+    host_args(parser_deploy_worker)
+    parser_deploy_worker.set_defaults(handler=cmd_deploy_worker)
+
+    # -> deploy -> cluster
+    parser_deploy_cluster = parser_deploy_sub.add_parser("cluster", description="Deploy a cluster")
+    parser_deploy_cluster.add_argument("cluster_conf", help="JSON configuration for the cluster")
+    parser_deploy_cluster.set_defaults(handler=cmd_deploy_cluster)
 
     # -> stop
     parser_stop = parser_sub.add_parser("stop")
@@ -116,11 +121,6 @@ if __name__ == "__main__":
     parser_token = parser_sub.add_parser("token", description="Get master node token")
     host_args(parser_token, single=True)
     parser_token.set_defaults(handler=cmd_token)
-
-    # -> cluster
-    parser_cluster = parser_sub.add_parser("cluster", description="Deploy a cluster")
-    parser_cluster.add_argument("cluster_conf", help="JSON configuration for the cluster")
-    parser_cluster.set_defaults(handler=cmd_cluster)
 
     args = parser.parse_args()
     args.handler(args)
