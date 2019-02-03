@@ -7,6 +7,7 @@ import tempfile
 
 from jsonschema import validate
 from fabric import Connection
+import invoke
 
 from const import *
 
@@ -57,14 +58,31 @@ class Node:
 
     # run in BASE_DIR
     def run(self, cmd):
-        return self.conn.run("if [ -d {} ]; then cd {}; fi && bash -c '{}'" \
-                             .format(BASE_DIR, BASE_DIR, cmd), pty=True)
+        try:
+            res = self.conn.run("if [ -d {} ]; then cd {}; fi && bash -c '{}'" \
+                                .format(BASE_DIR, BASE_DIR, cmd), pty=True)
+        except invoke.exceptions.UnexpectedExit as exc:
+            res = exc.result
 
-    def sudo(self, cmd):
+        if res.return_code:
+            raise Exception("Command `{}` exited with code {}".format(cmd, res.return_code))
+
+        return res
+
+    def sudo(self, orig_cmd):
         # set sudo prompt to an invisible character to avoid default prompt
         cmd = "if [ -d {} ]; then cd {}; fi && echo '{}' | sudo -S -p $(echo -ne '\x07') {}" \
-              .format(BASE_DIR, BASE_DIR, self.password, cmd)
-        return self.conn.run(cmd, pty=True)
+              .format(BASE_DIR, BASE_DIR, self.password, orig_cmd)
+        
+        try:
+            res = self.conn.run(cmd, pty=True)
+        except invoke.exceptions.UnexpectedExit as exc:
+            res = exc.result
+
+        if res.return_code:
+            raise Exception("Command `{}` exited with code {}".format(orig_cmd, res.return_code))
+
+        return res
 
 class Master(Node):
     def __init__(self, conn, token=str(uuid.uuid4())):
