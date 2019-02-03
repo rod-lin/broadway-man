@@ -12,8 +12,33 @@ warn() {
     echo "***" "$@" 1>&2
 }
 
+silent() {
+    "$@" 1>/dev/null 2>/dev/null
+}
+
+# the script depends on wget and nc
+check-dep() {
+    if ! has-command wget || ! has-command nc || ! has-command grep; then
+        error "this script requires wget, nc, and grep"
+        exit 1
+    fi
+}
+
+is-systemd() {
+    [ "$(stat /proc/1/exe | grep systemd)" ]
+}
+
+# check if docker if alive on $DOCKER_HOST:$DOCKER_PORT
+check-docker() {
+    DOCKER_HOST=$DOCKER_HOST:$DOCKER_PORT docker info 1>/dev/null 2>/dev/null
+}
+
+has-command() {
+    command -v $1 1>/dev/null 2>/dev/null
+}
+
 install-docker() {
-    if ! [ -x "$(command -v docker)" ]; then
+    if ! has-command docker; then
         log "installing docker"
         wget -O - https://get.docker.com/ | sh
         log "docker installed"
@@ -21,22 +46,48 @@ install-docker() {
         log "docker has already been installed"
     fi
 
-    if ! [ -f "/etc/systemd/system/docker.service.d/override.conf" ]; then
-        log "restarting docker with local port binding"
+    if ! check-docker; then
+        if is-systemd; then
+            log "detected systemd"
+        
+            log "configuring docker on $DOCKER_HOST:$DOCKER_PORT for systemd"
 
-        mkdir -p /etc/systemd/system/docker.service.d/
+            mkdir -p /etc/systemd/system/docker.service.d/
 
-        # add -H tcp://$DOCKER_HOST:$DOCKER_PORT flag
-        {
-            echo "[Service]"
-            echo "ExecStart="
-            echo "ExecStart=/usr/bin/env dockerd -H fd:// -H tcp://$DOCKER_HOST:$DOCKER_PORT"
-        } > cat > /etc/systemd/system/docker.service.d/override.conf
+            systemctl start docker # start service before cat
+            CURRENT_EXECSTART="$(systemctl cat docker | grep ExecStart= | head -n 1)"
 
-        systemctl daemon-reload
-        systemctl restart docker
+            log "current $CURRENT_EXECSTART"
 
-        log "docker restarted"
+            # add -H tcp://$DOCKER_HOST:$DOCKER_PORT flag
+            {
+                echo "[Service]"
+                echo "ExecStart="
+                echo "$CURRENT_EXECSTART -H tcp://$DOCKER_HOST:$DOCKER_PORT"
+            } > cat > /etc/systemd/system/docker.service.d/override.conf
+
+            systemctl daemon-reload
+            systemctl restart docker
+
+            log "docker restarted"
+        else
+            log "systemd not detected"
+
+            # for sysvinit or upstart
+            log "configuring docker on $DOCKER_HOST:$DOCKER_PORT for sysvinit/upstart"
+
+            echo "DOCKER_OPTS=\"-H tcp://$DOCKER_HOST:$DOCKER_PORT\"" >> /etc/default/docker
+            service docker restart
+
+            log "docker restarted"
+        fi
+    fi
+
+    sleep 1
+
+    if ! check-docker; then
+        error "failed to set up docker at tcp://$DOCKER_HOST:$DOCKER_PORT"
+        exit 1
     fi
 }
 
@@ -62,11 +113,7 @@ is-container-running() {
     [ "$(docker inspect -f {{.State.Running}} $1 2>/dev/null)" == "true" ]
 }
 
-silent() {
-    "$@" 1>/dev/null 2>/dev/null
-}
-
-rm-name() {
+rm-container-name() {
     if [ "$(docker ps -aq -f status=exited -f name=$1)" ]; then
         docker rm $1
     fi
@@ -75,3 +122,5 @@ rm-name() {
 stop-container() {
     [ "$(docker stop $1)" == $1 ]
 }
+
+check-dep

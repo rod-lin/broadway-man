@@ -27,11 +27,6 @@ fi
 
 install-docker
 
-# TODO
-# bind docker daemon to local port
-# echo "DOCKER_OPTS=\"-H tcp://$DOCKER_HOST:$DOCKER_PORT\"" >> /etc/default/docker
-# service docker restart
-
 # disable apparmor
 log "disabling app armor"
 systemctl stop apparmor && systemctl disable apparmor
@@ -41,7 +36,7 @@ if is-container-running $CONTAINER_WORKER; then
 else
     log "running worker container"
 
-    silent rm-name $CONTAINER_WORKER
+    silent rm-container-name $CONTAINER_WORKER
 
     log "pulling worker container"
 

@@ -12,7 +12,7 @@ if is-container-running $CONTAINER_MONGO; then
 else
     log "running mongo container"
 
-    silent rm-name $CONTAINER_MONGO
+    silent rm-container-name $CONTAINER_MONGO
     
     mkdir -p $MONGO_DBPATH
 
@@ -41,7 +41,7 @@ else
 
     log "running master container"
 
-    silent rm-name $CONTAINER_MASTER
+    silent rm-container-name $CONTAINER_MASTER
 
     log "pulling master container"
 
