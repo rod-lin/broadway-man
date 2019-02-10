@@ -6,7 +6,7 @@
 
     pip install git+https://github.com/rod-lin/broadway-man
 
-### Types of node
+### Node types
 
 - Master node: docker, broadway-api, and mongodb
 - Worker node: docker, broadway-grader
@@ -54,4 +54,4 @@ Get master node token
     python -m broadway.man token user@host
     
     # e.g. to get token of a testnet(default password is empty for a testnet)
-    python -m broadway.man token root@<testnet addr>
+    python -m broadway.man token root@<testnet addr>    
