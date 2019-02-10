@@ -11,5 +11,6 @@ setup(
     name="broadway-man",
     version="0.1",
     packages=[ "broadway/man" ],
-    install_requires=deps
+    install_requires=deps,
+    include_package_data=True,
 )
