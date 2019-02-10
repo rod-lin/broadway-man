@@ -1,3 +1,4 @@
+source /etc/profile
 source scripts/const.sh
 
 log() {
@@ -37,6 +38,17 @@ has-command() {
     command -v $1 1>/dev/null 2>/dev/null
 }
 
+wait-cond() {
+    echo -n $1
+    
+    while "${@:2}"; do
+        echo -n "."
+        sleep 1
+    done
+
+    echo ""
+}
+
 install-docker() {
     if ! has-command docker; then
         log "installing docker"
@@ -71,15 +83,31 @@ install-docker() {
 
             log "docker restarted"
         else
-            log "systemd not detected"
+            if [ -w /etc/default/docker ]; then
+                log "systemd not detected"
 
-            # for sysvinit or upstart
-            log "configuring docker on $DOCKER_HOST:$DOCKER_PORT for sysvinit/upstart"
+                # for sysvinit or upstart
+                log "configuring docker on $DOCKER_HOST:$DOCKER_PORT for sysvinit/upstart"
 
-            echo "DOCKER_OPTS=\"-H tcp://$DOCKER_HOST:$DOCKER_PORT\"" >> /etc/default/docker
-            service docker restart
+                echo "DOCKER_OPTS=\"-H tcp://$DOCKER_HOST:$DOCKER_PORT\"" >> /etc/default/docker
+                service docker restart
 
-            log "docker restarted"
+                log "docker restarted"
+            else
+                log "unrecognized config, trying directly starting dockerd"
+
+                if [ -f /var/run/docker.pid ]; then
+                    log "killing dockerd"
+                    
+                    kill $(cat /var/run/docker.pid)
+
+                    wait-cond "waiting for dockerd to stop" [ -f /var/run/docker.pid ]
+                fi
+
+                nohup dockerd -H unix:///var/run/docker.sock -H "tcp://$DOCKER_HOST:$DOCKER_PORT" &
+
+                log "docker started"
+            fi
         fi
     fi
 

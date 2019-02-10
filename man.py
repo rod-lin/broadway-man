@@ -1,9 +1,10 @@
-from fabric import Connection
-
 import getpass
+import logging
 import argparse
 
 from nodes import *
+from testnet import *
+from fabric import Connection
 
 def make_conn(host, args):
     password = None
@@ -63,10 +64,27 @@ def cmd_deploy_cluster(args):
 
     host, port, token = cluster.deploy()
 
-    print("Cluster on {}:{} is deployed".format(host, port))
-    print("Cluster token: " + token)
+    logging.info("Cluster on {}:{} is deployed".format(host, port))
+    logging.info("Cluster token: " + token)
+
+def cmd_deploy_testnet(args):
+    testnet = Testnet(args.name)
+
+    host, port, token = testnet.deploy(args.subnet)
+    testnet.add_worker()
+    testnet.add_worker()
+
+    logging.info("Testnet on {}:{} is deployed".format(host, port))
+    logging.info("Testnet token: " + token)
+
+def cmd_stop_testnet(args):
+    testnet = Testnet(args.name)
+    testnet.stop()
+    logging.info("Testnet {} stopped".format(args.name))
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     parser = argparse.ArgumentParser(description="Manage Broadway nodes")
     parser.set_defaults(handler=lambda _: parser.print_help())
 
@@ -96,6 +114,12 @@ if __name__ == "__main__":
     parser_deploy_cluster.add_argument("cluster_conf", help="JSON configuration for the cluster")
     parser_deploy_cluster.set_defaults(handler=cmd_deploy_cluster)
 
+    # -> deploy -> testnet
+    parser_deploy_testnet = parser_deploy_sub.add_parser("testnet", description="Deploy a cluster locally using docker")
+    parser_deploy_testnet.add_argument("name", help="Identifier of the testnet")
+    parser_deploy_testnet.add_argument("subnet", help="Subnet to deploy the cluster")
+    parser_deploy_testnet.set_defaults(handler=cmd_deploy_testnet)
+
     # -> stop
     parser_stop = parser_sub.add_parser("stop")
     parser_stop.set_defaults(handler=lambda _: parser_stop.print_help())
@@ -111,6 +135,11 @@ if __name__ == "__main__":
     parser_stop_worker = parser_stop_sub.add_parser("worker", description="Stop worker node")
     host_args(parser_stop_worker)
     parser_stop_worker.set_defaults(handler=cmd_stop_worker)
+
+    # -> stop -> testnet
+    parser_stop_testnet = parser_stop_sub.add_parser("testnet", description="Stop a testnet")
+    parser_stop_testnet.add_argument("name", help="Identifier of the testnet")
+    parser_stop_testnet.set_defaults(handler=cmd_stop_testnet)
 
     # -> mongo
     parser_mongo = parser_sub.add_parser("mongo", description="Manage MongoDB on a master node")
