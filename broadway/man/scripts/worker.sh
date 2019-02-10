@@ -28,8 +28,12 @@ fi
 install-docker
 
 # disable apparmor
-log "disabling app armor"
-systemctl stop apparmor && systemctl disable apparmor
+if has-command systemctl; then
+    log "disabling app armor"
+    systemctl stop apparmor && systemctl disable apparmor
+else
+    log "systemd not found, leaving app armor open"
+fi
 
 if is-container-running $CONTAINER_WORKER; then
     log "worker container is already running"

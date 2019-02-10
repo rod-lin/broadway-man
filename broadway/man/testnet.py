@@ -2,7 +2,8 @@ import re
 import docker
 import logging
 
-from nodes import *
+from .nodes import *
+from .utils import prog_dir
 from fabric import Connection
 
 RE_SUBNET = r"((\d+.\d+.\d+).\d+)/(\d+)"
@@ -11,6 +12,8 @@ NESTED_PASSWORD = "docker" # set in Dockerfile
 
 NETWORK_PREFIX = "broadway-testnet"
 CONTAINER_PREFIX = "broadway-testnet"
+
+MAX_WORKER = 128
 
 class Testnet:
     def __init__(self, name, network_prefix=NETWORK_PREFIX):
@@ -36,7 +39,7 @@ class Testnet:
                 container.stop()
 
         # remove network
-        logging.info("Stopping network {}".format(self.network))
+        logging.info("Removing network {}".format(self.network))
         network = self.client.networks.get(self.network)
         network.remove()
 
@@ -55,10 +58,17 @@ class Testnet:
         ipam_pool = docker.types.IPAMPool(subnet=self.subnet)
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
 
+        # remove existing network
+        try:
+            nets = self.client.networks.list(names=[ self.network ])
+            for net in nets:
+                net.remove()
+        except: pass
+        
         self.client.networks.create(self.network, driver="bridge", ipam=ipam_config)
         
         # build image for broadway node
-        self.client.images.build(path="nested", tag="broadway-nested")
+        self.client.images.build(path="{}/nested".format(prog_dir()), tag="broadway-nested")
 
         # setup master
         conn = self.deploy_node()
@@ -77,6 +87,9 @@ class Testnet:
 
     def deploy_node(self):
         self.node_count += 1
+
+        if self.node_count > MAX_WORKER:
+            raise Exception("Too many workers")
 
         ip = self.get_node_ip(self.node_count)
         name = self.get_node_name(self.node_count)
@@ -98,6 +111,11 @@ class Testnet:
         server.start()
 
         conn = Connection(NESTED_USER + "@" + ip, connect_kwargs={ "password": NESTED_PASSWORD })
+
+        while True:
+            logging.info("Trying to connect to {}".format(ip))
+            try: conn.open(); break
+            except: pass
 
         return conn
 

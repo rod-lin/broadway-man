@@ -2,14 +2,14 @@ import os
 import uuid
 import json
 import string
+import invoke
 import getpass
 import tempfile
 
+from .utils import *
+from .const import *
 from jsonschema import validate
 from fabric import Connection
-import invoke
-
-from const import *
 
 def filter_visible(s):
     return "".join(filter(lambda x: x in string.printable and x not in string.whitespace, s))
@@ -22,6 +22,8 @@ class Node:
 
         password = conn.connect_kwargs.get("password")
 
+        cwd = prog_dir()
+
         self.password = \
             password if password is not None else \
             getpass.getpass("sudo password for {}@{}: ".format(conn.user, conn.host))
@@ -30,9 +32,9 @@ class Node:
         self.sudo("chown -R {} {}".format(self.conn.user, BASE_DIR))
 
         # upload all scripts
-        for file in os.listdir("scripts"):
+        for file in os.listdir("{}/scripts".format(cwd)):
             if file.endswith(".sh"):
-                self.conn.put("scripts/{}".format(file), "{}/scripts".format(BASE_DIR))
+                self.conn.put("{}/scripts/{}".format(cwd, file), "{}/scripts".format(BASE_DIR))
 
         # generate const.sh
         _, path = tempfile.mkstemp()

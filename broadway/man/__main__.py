@@ -2,8 +2,8 @@ import getpass
 import logging
 import argparse
 
-from nodes import *
-from testnet import *
+from .nodes import *
+from .testnet import *
 from fabric import Connection
 
 def make_conn(host, args):
@@ -68,11 +68,14 @@ def cmd_deploy_cluster(args):
     logging.info("Cluster token: " + token)
 
 def cmd_deploy_testnet(args):
+    nworker = int(args.worker)
     testnet = Testnet(args.name)
 
     host, port, token = testnet.deploy(args.subnet)
-    testnet.add_worker()
-    testnet.add_worker()
+
+    for i in range(nworker):
+        logging.info("Deploying worker {}".format(i + 1))
+        testnet.add_worker()
 
     logging.info("Testnet on {}:{} is deployed".format(host, port))
     logging.info("Testnet token: " + token)
@@ -118,6 +121,7 @@ if __name__ == "__main__":
     parser_deploy_testnet = parser_deploy_sub.add_parser("testnet", description="Deploy a cluster locally using docker")
     parser_deploy_testnet.add_argument("name", help="Identifier of the testnet")
     parser_deploy_testnet.add_argument("subnet", help="Subnet to deploy the cluster")
+    parser_deploy_testnet.add_argument("worker", help="Number of worker nodes")
     parser_deploy_testnet.set_defaults(handler=cmd_deploy_testnet)
 
     # -> stop
