@@ -8,12 +8,13 @@ from fabric import Connection
 
 RE_SUBNET = r"((\d+.\d+.\d+).\d+)/(\d+)"
 NESTED_USER = "root"
-NESTED_PASSWORD = "docker" # set in Dockerfile
+NESTED_PASSWORD = "" # set in Dockerfile
 
 NETWORK_PREFIX = "broadway-testnet"
 CONTAINER_PREFIX = "broadway-testnet"
 
 MAX_WORKER = 128
+MAX_CONN_TRY = 5
 
 class Testnet:
     def __init__(self, name, network_prefix=NETWORK_PREFIX):
@@ -112,10 +113,17 @@ class Testnet:
 
         conn = Connection(NESTED_USER + "@" + ip, connect_kwargs={ "password": NESTED_PASSWORD })
 
-        while True:
+        tries = 0
+
+        while tries < MAX_CONN_TRY:
             logging.info("Trying to connect to {}".format(ip))
             try: conn.open(); break
             except: pass
+
+            tries += 1
+
+        if tries >= MAX_CONN_TRY:
+            raise Exception("Failed to connect to to {}".format(ip))
 
         return conn
 
